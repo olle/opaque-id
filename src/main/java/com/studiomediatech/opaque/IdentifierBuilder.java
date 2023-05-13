@@ -32,7 +32,7 @@ public final class IdentifierBuilder {
         this.path = path;
     }
 
-    public IdentifierBuilder(IdentifierBuilder other, Param param) {
+    private IdentifierBuilder(IdentifierBuilder other, Param param) {
         this.domain = other.domain;
         this.path = other.path;
         this.params.addAll(other.params);
@@ -43,11 +43,20 @@ public final class IdentifierBuilder {
         return new IdentifierBuilder(this, new Identifier.Path(Stream.of(paths).collect(Collectors.joining("/"))));
     }
 
-    public IdentifierBuilder withParam(String name, CharSequence value) {
+    public IdentifierBuilder withParam(String name, Number value) {
+        return new IdentifierBuilder(this, new Identifier.Param(name, value));
+    }
+
+    public IdentifierBuilder withParam(String name, String value) {
         return new IdentifierBuilder(this, new Identifier.Param(name, value));
     }
 
     public Identifier build() {
+
+        if (params.isEmpty()) {
+            throw new UnbuildableIdentifierException();
+        }
+
         return new Identifier(this);
     }
 
