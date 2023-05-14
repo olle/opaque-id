@@ -11,6 +11,9 @@ import com.studiomediatech.opaque.Identifier.Domain;
 import com.studiomediatech.opaque.Identifier.Param;
 import com.studiomediatech.opaque.Identifier.Path;
 
+/**
+ * Builder for {@link Identifier identifiers}, providing an easy-to-use chaining API.
+ */
 public final class IdentifierBuilder {
 
     private final Domain domain;
@@ -39,18 +42,49 @@ public final class IdentifierBuilder {
         this.params.add(param);
     }
 
+    /**
+     * Appends paths to this builder.
+     *
+     * @param paths
+     *            to append.
+     *
+     * @return this builder for chaining.
+     */
     public IdentifierBuilder withPath(String... paths) {
         return new IdentifierBuilder(this, new Identifier.Path(Stream.of(paths).collect(Collectors.joining("/"))));
     }
 
+    /**
+     * Appends a key-value numeric parameter to this builder.
+     *
+     * @param name
+     *            of the parameter
+     * @param value
+     *            of the parameter
+     *
+     * @return this builder for chaining.
+     */
     public IdentifierBuilder withParam(String name, Number value) {
         return new IdentifierBuilder(this, new Identifier.Param(name, value));
     }
 
+    /**
+     * Appends a key-value string parameter to this builder.
+     *
+     * @param name
+     *            of the parameter
+     * @param value
+     *            of the parameter
+     *
+     * @return this builder for chaining.
+     */
     public IdentifierBuilder withParam(String name, String value) {
         return new IdentifierBuilder(this, new Identifier.Param(name, value));
     }
 
+    /**
+     * {@return The identifier, built by this builder. }
+     */
     public Identifier build() {
 
         if (params.isEmpty()) {

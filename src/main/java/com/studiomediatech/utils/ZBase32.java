@@ -46,6 +46,12 @@ public class ZBase32 {
     private static final char[] ALPHABET = "ybndrfg8ejkmcpqxot1uwisza345h769".toCharArray();
     private static final int BITWIDTH = 5;
 
+    /**
+     * {@return The z-base32 encoded string for the given string value.}
+     *
+     * @param value
+     *            to encode.
+     */
     public static String encode(String value) {
 
         byte[] input = value.getBytes();
@@ -78,6 +84,12 @@ public class ZBase32 {
         return result.toString();
     }
 
+    /**
+     * {@return The decoded string from the given string value. }
+     *
+     * @param value
+     *            to decode
+     */
     public static String decode(String value) {
 
         char[] input = value.toCharArray();
