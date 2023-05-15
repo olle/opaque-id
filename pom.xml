@@ -57,6 +57,9 @@
 				<groupId>net.revelc.code.formatter</groupId>
 				<artifactId>formatter-maven-plugin</artifactId>
 				<version>2.22.0</version>
+				<configuration>
+					<javaExclusionPattern>(@formatter:off([^@]*)@formatter:on)</javaExclusionPattern>
+				</configuration>
 				<executions>
 					<execution>
 						<goals>
