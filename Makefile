@@ -6,3 +6,7 @@ all:
 .PHONY: tidy
 tidy:
 	./mvnw formatter:format
+
+.PHONY: clean
+clean:
+	./mvnw clean

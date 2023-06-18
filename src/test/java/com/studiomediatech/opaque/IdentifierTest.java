@@ -8,6 +8,8 @@ import java.util.Base64;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.studiomediatech.utils.ZBase32;
+
 public class IdentifierTest {
 
     private Identifier id;
@@ -76,7 +78,8 @@ public class IdentifierTest {
         // JSONAssert.assertEquals(
         // """
         // {
-        // value: 'fhzzehuxqbwsn5tqpfz16h5dcfsgkm5dp7szy7mwcw9sea37q71zg7btr33g655p8w4dectgpf3sa3j7ewu8ramdpc6wkpe',
+        // value:
+        // 'fhzzehuxqbwsn5tqpfz16h5dcfsgkm5dp7szy7mwcw9sea37q71zg7btr33g655p8w4dectgpf3sa3j7ewu8ramdpc6wkpe',
         // dc: 'west1',
         // room: '442',
         // isle: 'E',
@@ -98,6 +101,16 @@ public class IdentifierTest {
 
         String encoded = id.toBase64();
         String decoded = new String(Base64.getUrlDecoder().decode(encoded));
+
+        assertThat(encoded).isNotEqualTo(id.toText());
+        assertThat(decoded).isEqualTo(id.toText());
+    }
+
+    @Test
+    void is_represented_as_zbase32() throws Exception {
+
+        String encoded = id.toBase32();
+        String decoded = ZBase32.decode(encoded);
 
         assertThat(encoded).isNotEqualTo(id.toText());
         assertThat(decoded).isEqualTo(id.toText());
