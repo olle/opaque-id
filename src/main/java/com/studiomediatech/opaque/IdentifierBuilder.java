@@ -71,7 +71,7 @@ public final class IdentifierBuilder {
     /**
      * Appends a key-value string property to this builder.
      *
-     * @param name
+     * @param key
      *            of the property
      * @param value
      *            of the property

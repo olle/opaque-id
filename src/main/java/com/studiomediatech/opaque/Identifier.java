@@ -142,6 +142,9 @@ public final class Identifier {
         return toURI().toString();
     }
 
+    /**
+     * {@return The string value representation (z-Base32) of this identifier.}
+     */
     public String toValue() {
         return "";
     }
@@ -224,10 +227,16 @@ public final class Identifier {
         return map;
     }
 
+    /**
+     * {@return The realm string representation of this identifier.}
+     */
     public String realm() {
         return this.domain;
     }
 
+    /**
+     * {@return The canonical sectors as a collection of strings for this identifier.}
+     */
     public Collection<String> sectors() {
         return List.of(this.path.split(Pattern.quote("/")));
     }
