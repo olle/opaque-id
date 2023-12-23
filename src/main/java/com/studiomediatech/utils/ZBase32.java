@@ -46,6 +46,10 @@ public class ZBase32 {
     private static final char[] ALPHABET = "ybndrfg8ejkmcpqxot1uwisza345h769".toCharArray();
     private static final int BITWIDTH = 5;
 
+    private ZBase32() {
+        // Hidden
+    }
+
     /**
      * {@return The z-base32 encoded string for the given string value.}
      *

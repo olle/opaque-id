@@ -153,12 +153,48 @@ public final class Identifier {
      * {@return The JSON representation of this identifier.}
      */
     public String toJSON() {
-        return "{\"value\":\"%s\",%s}".formatted(toBase32(), buildJSON(properties));
+        return toJSON(false);
     }
 
-    private String buildJSON(Map<String, Object> params) {
-        return params.entrySet().stream().map(entry -> "\"%s\":\"%s\"".formatted(entry.getKey(), entry.getValue()))
-                .collect(Collectors.joining(","));
+    /**
+     * Returns the JSON representation of this identifier.
+     *
+     * @param pretty
+     *            {@code true} if the JSON representation should be pretty printed, {@code false} if not.
+     *
+     * @return The JSON representation of this identifier.
+     */
+    public String toJSON(boolean pretty) {
+
+        String template = "{\"value\":\"%s\",%s}";
+
+        if (pretty) {
+            template = """
+                    {
+                      \"value\": \"%s\",
+                    %s
+                    }
+                    """;
+        }
+
+        return template.formatted(toBase32(), buildJSON(properties, pretty));
+    }
+
+    private String buildJSON(Map<String, Object> params, boolean pretty) {
+
+        final String template;
+        final String delimiter;
+
+        if (pretty) {
+            template = "  \"%s\": \"%s\"";
+            delimiter = ",\n";
+        } else {
+            template = "\"%s\":\"%s\"";
+            delimiter = ",";
+        }
+
+        return params.entrySet().stream().map(entry -> template.formatted(entry.getKey(), entry.getValue()))
+                .collect(Collectors.joining(delimiter));
     }
 
     /**

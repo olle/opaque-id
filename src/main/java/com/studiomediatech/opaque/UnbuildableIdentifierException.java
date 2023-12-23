@@ -5,4 +5,8 @@ package com.studiomediatech.opaque;
  */
 public class UnbuildableIdentifierException extends IllegalStateException {
     private static final long serialVersionUID = 1L;
+
+    UnbuildableIdentifierException() {
+        // OK
+    }
 }

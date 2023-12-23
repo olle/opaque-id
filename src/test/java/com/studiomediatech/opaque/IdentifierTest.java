@@ -1,12 +1,13 @@
 package com.studiomediatech.opaque;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Base64;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.skyscreamer.jsonassert.JSONAssert;
 
 import com.studiomediatech.utils.ZBase32;
 
@@ -69,10 +70,7 @@ public class IdentifierTest {
         assertThrows(IllegalStateException.class, () -> id.getNumber("rack"));
         assertThrows(IllegalStateException.class, () -> id.getString("room"));
 
-        // String base32 = id.toBase32();
-        // System.out.println(base32);
-        //
-        // String json = id.toJSON();
+        // String json = id.toJSON(true);
         // System.out.println(json);
         //
         // JSONAssert.assertEquals(
@@ -91,7 +89,10 @@ public class IdentifierTest {
     @Test
     void to_text_is_human_readable() throws Exception {
 
-        assertThat(id.toText()).contains("tropian.io").contains("scale/compute").contains("dc", "west1")
+        String text = id.toText();
+        System.out.println(text);
+
+        assertThat(text).contains("tropian.io").contains("scale/compute").contains("dc", "west1")
                 .contains("room", "442").contains("isle", "E").contains("rack", "E5");
 
     }
