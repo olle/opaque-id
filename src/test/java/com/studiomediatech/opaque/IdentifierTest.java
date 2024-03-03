@@ -4,10 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Base64;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.skyscreamer.jsonassert.JSONAssert;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import com.studiomediatech.utils.ZBase32;
 
@@ -27,6 +30,39 @@ public class IdentifierTest {
 				   .having("rack", "E5")
 				   .build();
 		// @formatter:on
+    }
+
+    @Test
+    void equals_for_same_realm_sector_and_properties() throws Exception {
+
+        Identifier other = Identifier.inRealm("tropian.io").inSector("scale", "compute").having("dc", "west1")
+                .having("room", 442).having("isle", "E").having("rack", "E5").build();
+
+        assertThat(other).isNotSameAs(id);
+        assertThat(other).isEqualTo(id);
+    }
+
+    @Test
+    void unequal_for_different_realm() throws Exception {
+
+        Identifier other = Identifier.inRealm("xtropian.io").inSector("scale", "compute").having("dc", "west1")
+                .having("room", 442).having("isle", "E").having("rack", "E5").build();
+
+        assertThat(other).isNotEqualTo(id);
+    }
+
+    static Stream<Arguments> sectors() {
+        return Stream.of(Arguments.of("xscale", "compute"), Arguments.of("scale", "xcompute"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("sectors")
+    void unequal_for_different_sector(String key, String value) throws Exception {
+
+        Identifier other = Identifier.inRealm("tropian.io").inSector(key, value).having("dc", "west1")
+                .having("room", 442).having("isle", "E").having("rack", "E5").build();
+
+        assertThat(other).isNotEqualTo(id);
     }
 
     @Test
@@ -90,7 +126,6 @@ public class IdentifierTest {
     void to_text_is_human_readable() throws Exception {
 
         String text = id.toText();
-        System.out.println(text);
 
         assertThat(text).contains("tropian.io").contains("scale/compute").contains("dc", "west1")
                 .contains("room", "442").contains("isle", "E").contains("rack", "E5");
@@ -101,6 +136,7 @@ public class IdentifierTest {
     void is_represented_as_base64() throws Exception {
 
         String encoded = id.toBase64();
+
         String decoded = new String(Base64.getUrlDecoder().decode(encoded));
 
         assertThat(encoded).isNotEqualTo(id.toText());
@@ -118,17 +154,28 @@ public class IdentifierTest {
     }
 
     @Test
+    void is_representated_as_scalar_value() throws Exception {
+
+        String value = id.toValue();
+
+        assertThat(value).isEqualTo(
+                "fhzzehuxqbwsn5tqpfz16h5dcfsgkm5dp7szy7mwcw9sea37q71zg7btr33g655p8w4dectgpf3sa3j7ewu8ramdpc6wkpe");
+    }
+
+    @Test
     void scalar_value_is_parsed() throws Exception {
 
-        Identifier id = Identifier.fromValue(
+        Identifier parsedId = Identifier.fromValue(
                 "fhzzehuxqbwsn5tqpfz16h5dcfsgkm5dp7szy7mwcw9sea37q71zg7btr33g655p8w4dectgpf3sa3j7ewu8ramdpc6wkpe");
 
-        assertThat(id.realm()).isEqualTo("tropian.io");
-        assertThat(id.sectors()).containsExactly("scale", "compute");
+        assertThat(parsedId).isEqualTo(this.id);
 
-        assertThat(id.get("dc")).isEqualTo("west1");
-        assertThat(id.getNumber("room")).isEqualTo(442);
-        assertThat(id.getString("isle")).isEqualTo("E");
-        assertThat(id.get("rack")).isEqualTo("E5");
+        assertThat(parsedId.realm()).isEqualTo("tropian.io");
+        assertThat(parsedId.sectors()).containsExactly("scale", "compute");
+
+        assertThat(parsedId.get("dc")).isEqualTo("west1");
+        assertThat(parsedId.getNumber("room")).isEqualTo(442);
+        assertThat(parsedId.getString("isle")).isEqualTo("E");
+        assertThat(parsedId.get("rack")).isEqualTo("E5");
     }
 }

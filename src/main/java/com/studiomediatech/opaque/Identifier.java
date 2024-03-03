@@ -7,6 +7,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -32,6 +33,28 @@ public final class Identifier {
         this.domain = realm;
         this.path = path;
         this.properties = properties;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(domain, path, properties);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+
+        if (this == obj) {
+            return true;
+        }
+
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+
+        Identifier other = (Identifier) obj;
+
+        return Objects.equals(domain, other.domain) && Objects.equals(path, other.path)
+                && Objects.equals(properties, other.properties);
     }
 
     /**
@@ -146,7 +169,7 @@ public final class Identifier {
      * {@return The string value representation (z-Base32) of this identifier.}
      */
     public String toValue() {
-        return "";
+        return toBase32();
     }
 
     /**
