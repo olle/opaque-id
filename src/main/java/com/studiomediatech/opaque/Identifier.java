@@ -2,13 +2,16 @@ package com.studiomediatech.opaque;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import com.studiomediatech.utils.ZBase32;
@@ -19,20 +22,20 @@ import com.studiomediatech.utils.ZBase32;
  */
 public final class Identifier {
 
+    private static final String VALUE_KEY = "value";
+
     private final String domain;
     private final String path;
     private final Map<String, Object> properties;
 
     Identifier(IdentifierBuilder builder) {
-        this.domain = builder.getDomain();
-        this.path = builder.getPath();
-        this.properties = builder.getParamsMap();
+        this(builder.getDomain(), builder.getPath(), builder.getParamsMap());
     }
 
-    private Identifier(String realm, String path, Map<String, Object> properties) {
-        this.domain = realm;
-        this.path = path;
-        this.properties = properties;
+    private Identifier(String domain, String path, Map<String, Object> properties) {
+        this.domain = Objects.requireNonNull(domain, "domain");
+        this.path = Objects.requireNonNull(path, "path");
+        this.properties = Collections.unmodifiableMap(new LinkedHashMap<>(properties));
     }
 
     @Override
@@ -42,19 +45,8 @@ public final class Identifier {
 
     @Override
     public boolean equals(Object obj) {
-
-        if (this == obj) {
-            return true;
-        }
-
-        if (obj == null || getClass() != obj.getClass()) {
-            return false;
-        }
-
-        Identifier other = (Identifier) obj;
-
-        return Objects.equals(domain, other.domain) && Objects.equals(path, other.path)
-                && Objects.equals(properties, other.properties);
+        return obj == this || obj instanceof Identifier other && Objects.equals(domain, other.domain)
+                && Objects.equals(path, other.path) && Objects.equals(properties, other.properties);
     }
 
     /**
@@ -64,6 +56,9 @@ public final class Identifier {
      *            to start the builder with.
      */
     public static IdentifierBuilder inRealm(String realm) {
+        if (realm == null || realm.isBlank()) {
+            throw new IllegalArgumentException("Realm must not be blank");
+        }
         return new IdentifierBuilder(new Realm(realm));
     }
 
@@ -74,14 +69,18 @@ public final class Identifier {
      *            to start the builder with.
      */
     public static IdentifierBuilder inSector(String sector) {
-        return new IdentifierBuilder(new Sector(sector));
+        return new IdentifierBuilder(new Sector(Objects.requireNonNull(sector, "sector")));
     }
 
     /**
      * Encapsulates an identifier realm.
      */
     static record Realm(String value) {
-        public static Realm empty() {
+        Realm {
+            Objects.requireNonNull(value, "value");
+        }
+
+        static Realm empty() {
             return new Realm("");
         }
     }
@@ -90,7 +89,11 @@ public final class Identifier {
      * Encapsulates an identifier path.
      */
     static record Sector(String value) {
-        public static Sector empty() {
+        Sector {
+            Objects.requireNonNull(value, "value");
+        }
+
+        static Sector empty() {
             return new Sector("");
         }
     }
@@ -99,6 +102,12 @@ public final class Identifier {
      * Encapsulates an identifier property.
      */
     static record Property(String name, Object value) {
+        Property {
+            if (name == null || name.isBlank()) {
+                throw new IllegalArgumentException("Property name must not be blank");
+            }
+            Objects.requireNonNull(value, "value");
+        }
     }
 
     /**
@@ -116,16 +125,15 @@ public final class Identifier {
      *
      * @param key
      *            a key identifying the value.
+     *
+     * @throws IllegalStateException
+     *             if the property is missing or not a string.
      */
     public String getString(String key) {
-
-        var value = properties.get(key);
-
-        if (!(value instanceof String)) {
-            throw new IllegalStateException();
+        if (properties.get(key) instanceof String value) {
+            return value;
         }
-
-        return (String) value;
+        throw new IllegalStateException("Property '%s' is not a string".formatted(key));
     }
 
     /**
@@ -133,29 +141,39 @@ public final class Identifier {
      *
      * @param name
      *            a key identifying the value.
+     *
+     * @throws IllegalStateException
+     *             if the property is missing or not a number.
      */
     public Number getNumber(String name) {
-        try {
-            return (Number) properties.get(name);
-        } catch (ClassCastException ex) {
-            throw new IllegalStateException(ex);
+        if (properties.get(name) instanceof Number value) {
+            return value;
         }
+        throw new IllegalStateException("Property '%s' is not a number".formatted(name));
     }
 
     private URI toURI() {
         try {
-            return new URI(null, domain, "/%s".formatted(path), buildURIQuery(properties), null);
+            var base = new URI(null, domain, "/" + path, null, null);
+            var query = buildURIQuery();
+            return URI.create(query.isEmpty() ? base.toASCIIString() : base.toASCIIString() + "?" + query);
         } catch (URISyntaxException e) {
-            throw new IllegalStateException(e);
+            throw new IllegalStateException("Invalid identifier components", e);
         }
     }
 
-    private String buildURIQuery(Map<String, Object> params) {
-        return params.entrySet().stream().map(this::mapEntryToParam).collect(Collectors.joining("&"));
+    private String buildURIQuery() {
+        return properties.entrySet().stream()
+                .map(entry -> "%s=%s".formatted(encode(entry.getKey()), encode(String.valueOf(entry.getValue()))))
+                .collect(Collectors.joining("&"));
     }
 
-    private String mapEntryToParam(Map.Entry<String, Object> entry) {
-        return "%s=%s".formatted(entry.getKey(), entry.getValue());
+    private static String encode(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
+    }
+
+    private static String decode(String value) {
+        return URLDecoder.decode(value, StandardCharsets.UTF_8);
     }
 
     /**
@@ -189,49 +207,61 @@ public final class Identifier {
      */
     public String toJSON(boolean pretty) {
 
-        String template = "{\"value\":\"%s\",%s}";
+        var entries = new LinkedHashMap<String, Object>(properties.size() + 1);
+        entries.put(VALUE_KEY, toBase32());
+        entries.putAll(properties);
 
-        if (pretty) {
-            template = """
-                    {
-                      \"value\": \"%s\",
-                    %s
-                    }
-                    """;
-        }
+        var delimiter = pretty ? ",\n  " : ",";
+        var prefix = pretty ? "{\n  " : "{";
+        var suffix = pretty ? "\n}\n" : "}";
 
-        return template.formatted(toBase32(), buildJSON(properties, pretty));
+        return entries.entrySet().stream().map(entry -> jsonEntry(entry, pretty))
+                .collect(Collectors.joining(delimiter, prefix, suffix));
     }
 
-    private String buildJSON(Map<String, Object> params, boolean pretty) {
+    private static String jsonEntry(Map.Entry<String, Object> entry, boolean pretty) {
+        var separator = pretty ? "\": \"" : "\":\"";
+        return "\"%s%s%s\"".formatted(escapeJson(entry.getKey()), separator,
+                escapeJson(String.valueOf(entry.getValue())));
+    }
 
-        final String template;
-        final String delimiter;
-
-        if (pretty) {
-            template = "  \"%s\": \"%s\"";
-            delimiter = ",\n";
-        } else {
-            template = "\"%s\":\"%s\"";
-            delimiter = ",";
+    private static String escapeJson(String value) {
+        var escaped = new StringBuilder(value.length());
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            switch (c) {
+                case '"' -> escaped.append("\\\"");
+                case '\\' -> escaped.append("\\\\");
+                case '\b' -> escaped.append("\\b");
+                case '\f' -> escaped.append("\\f");
+                case '\n' -> escaped.append("\\n");
+                case '\r' -> escaped.append("\\r");
+                case '\t' -> escaped.append("\\t");
+                default -> {
+                    if (c < 0x20) {
+                        escaped.append("\\u%04x".formatted((int) c));
+                    } else {
+                        escaped.append(c);
+                    }
+                }
+            }
         }
-
-        return params.entrySet().stream().map(entry -> template.formatted(entry.getKey(), entry.getValue()))
-                .collect(Collectors.joining(delimiter));
+        return escaped.toString();
     }
 
     /**
      * {@return The z-Base32 encoded string representation of this identifier.}
      */
     public String toBase32() {
-        return ZBase32.encode(toURI().toString());
+        return ZBase32.encode(toURI().toASCIIString());
     }
 
     /**
      * {@return The Base64 encoded string representation of this identifier.}
      */
     public String toBase64() {
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(toURI().toASCIIString().getBytes());
+        return Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(toURI().toASCIIString().getBytes(StandardCharsets.UTF_8));
     }
 
     /**
@@ -249,41 +279,54 @@ public final class Identifier {
 
     private static Identifier fromURI(URI uri) {
 
-        String path = uri.getPath();
+        var path = Objects.requireNonNullElse(uri.getPath(), "");
 
-        if (path.charAt(0) == '/') {
+        if (!path.isEmpty() && path.charAt(0) == '/') {
             path = path.substring(1);
         }
 
-        return new Identifier(uri.getAuthority(), path, buildPropertyMap(uri.getQuery()));
+        return new Identifier(uri.getAuthority(), path, buildPropertyMap(uri.getRawQuery()));
     }
 
     private static Map<String, Object> buildPropertyMap(String query) {
 
-        Map<String, Object> map = new LinkedHashMap<>();
+        var map = new LinkedHashMap<String, Object>();
 
-        String[] pairs = query.split(Pattern.quote("&"));
+        if (query == null || query.isBlank()) {
+            return map;
+        }
 
-        for (var pair : pairs) {
+        for (var pair : query.split("&")) {
 
-            String[] parts = pair.split(Pattern.quote("="));
-
-            String key = parts[0];
-
-            try {
-                long longValue = Long.parseLong(parts[1]);
-                try {
-                    int intValue = Math.toIntExact(longValue);
-                    map.put(key, Integer.valueOf(intValue));
-                } catch (ArithmeticException ex) {
-                    map.put(key, Long.valueOf(longValue));
-                }
-            } catch (NumberFormatException ex) {
-                map.put(key, parts[1]);
+            if (pair.isEmpty()) {
+                continue;
             }
+
+            var parts = pair.split("=", 2);
+            var key = decode(parts[0]);
+            var value = parts.length == 2 ? decode(parts[1]) : "";
+
+            map.put(key, parseValue(value));
         }
 
         return map;
+    }
+
+    private static Object parseValue(String value) {
+
+        try {
+            return Integer.valueOf(value);
+        } catch (NumberFormatException ignored) {
+            // Not an integer
+        }
+
+        try {
+            return Long.valueOf(value);
+        } catch (NumberFormatException ignored) {
+            // Not a long
+        }
+
+        return value;
     }
 
     /**
@@ -297,7 +340,12 @@ public final class Identifier {
      * {@return The canonical sectors as a collection of strings for this identifier.}
      */
     public Collection<String> sectors() {
-        return List.of(this.path.split(Pattern.quote("/")));
+        return List.of(this.path.split("/"));
+    }
+
+    @Override
+    public String toString() {
+        return toText();
     }
 
 }

@@ -1,12 +1,20 @@
-JAVA_HOME=$(shell unset JAVA_HOME; /usr/libexec/java_home -v 21)
+ifeq ($(shell uname -s),Darwin)
+JAVA_HOME := $(shell unset JAVA_HOME; /usr/libexec/java_home -v 25 2>/dev/null)
+endif
+export JAVA_HOME
 
-all:
-	./mvnw formatter:format verify
+all: verify
 
-.PHONY: tidy
+verify:
+	./mvnw -B formatter:format verify
+
+test:
+	./mvnw -B test
+
 tidy:
-	./mvnw formatter:format
+	./mvnw -B formatter:format
 
-.PHONY: clean
 clean:
-	./mvnw clean
+	./mvnw -B clean
+
+.PHONY: all verify test tidy clean

@@ -4,11 +4,9 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
-import com.studiomediatech.opaque.Identifier.Realm;
 import com.studiomediatech.opaque.Identifier.Property;
+import com.studiomediatech.opaque.Identifier.Realm;
 import com.studiomediatech.opaque.Identifier.Sector;
 
 /**
@@ -20,26 +18,26 @@ public final class IdentifierBuilder {
     private final Sector sector;
     private final Set<Property> properties = new LinkedHashSet<>();
 
-    IdentifierBuilder(Realm domain) {
-        this.realm = domain;
+    IdentifierBuilder(Realm realm) {
+        this.realm = realm;
         this.sector = Sector.empty();
     }
 
-    IdentifierBuilder(Sector path) {
+    IdentifierBuilder(Sector sector) {
         this.realm = Realm.empty();
-        this.sector = path;
+        this.sector = sector;
     }
 
-    private IdentifierBuilder(IdentifierBuilder other, Sector path) {
+    private IdentifierBuilder(IdentifierBuilder other, Sector sector) {
         this.realm = other.realm;
-        this.sector = path;
+        this.sector = sector;
     }
 
-    private IdentifierBuilder(IdentifierBuilder other, Property param) {
+    private IdentifierBuilder(IdentifierBuilder other, Property property) {
         this.realm = other.realm;
         this.sector = other.sector;
         this.properties.addAll(other.properties);
-        this.properties.add(param);
+        this.properties.add(property);
     }
 
     /**
@@ -51,7 +49,7 @@ public final class IdentifierBuilder {
      * @return this builder for chaining.
      */
     public IdentifierBuilder inSector(String... sector) {
-        return new IdentifierBuilder(this, new Identifier.Sector(Stream.of(sector).collect(Collectors.joining("/"))));
+        return new IdentifierBuilder(this, new Sector(String.join("/", sector)));
     }
 
     /**
@@ -65,7 +63,7 @@ public final class IdentifierBuilder {
      * @return this builder for chaining.
      */
     public IdentifierBuilder having(String key, Number value) {
-        return new IdentifierBuilder(this, new Identifier.Property(key, value));
+        return new IdentifierBuilder(this, new Property(key, value));
     }
 
     /**
@@ -79,11 +77,14 @@ public final class IdentifierBuilder {
      * @return this builder for chaining.
      */
     public IdentifierBuilder having(String key, String value) {
-        return new IdentifierBuilder(this, new Identifier.Property(key, value));
+        return new IdentifierBuilder(this, new Property(key, value));
     }
 
     /**
      * {@return The identifier, built by this builder. }
+     *
+     * @throws UnbuildableIdentifierException
+     *             if no properties have been added.
      */
     public Identifier build() {
 
@@ -96,21 +97,21 @@ public final class IdentifierBuilder {
 
     Map<String, Object> getParamsMap() {
 
-        Map<String, Object> map = new LinkedHashMap<>(properties.size());
+        var map = new LinkedHashMap<String, Object>(properties.size());
 
-        for (var param : properties) {
-            map.put(param.name(), param.value());
+        for (var property : properties) {
+            map.put(property.name(), property.value());
         }
 
         return map;
     }
 
     String getDomain() {
-        return realm.value().toString();
+        return realm.value();
     }
 
     String getPath() {
-        return sector.value().toString();
+        return sector.value();
     }
 
 }
